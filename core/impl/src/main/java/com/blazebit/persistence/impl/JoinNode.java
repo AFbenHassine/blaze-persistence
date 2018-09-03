@@ -587,8 +587,13 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         return valueCount;
     }
 
+    @Deprecated
     public String getValuesIdName() {
         return valuesIdName;
+    }
+
+    public Set<String> getValuesIdNames() {
+        return Collections.singleton(valuesIdName);
     }
 
     String getValuesTypeName() {

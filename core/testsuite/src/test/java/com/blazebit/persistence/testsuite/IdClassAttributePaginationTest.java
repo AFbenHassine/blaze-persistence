@@ -48,7 +48,9 @@ public class IdClassAttributePaginationTest extends AbstractCoreTest {
         transactional(new TxVoidWork() {
             @Override
             public void work(EntityManager em) {
-                IdClassEntity e1 = new IdClassEntity(1, "1", 1);
+                IdClassEntity e1 = new IdClassEntity(1,
+                        "1",
+                        1);
                 em.persist(e1);
             }
         });
