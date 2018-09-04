@@ -161,7 +161,7 @@ public interface FromBuilder<X extends FromBuilder<X>> {
      *
      * In contrast to {@link FromBuilder#fromValues(Class, String, int)} this will only bind the id attribute.
      *
-     * To set the values invoke {@link CommonQueryBuilder#setParameter(String, Object)}
+     * To set the values invxoke {@link CommonQueryBuilder#setParameter(String, Object)}
      * or {@link javax.persistence.Query#setParameter(String, Object)} with the alias and a collection.
      *
      * @param valueClass The class of the identifiable type for which to create a VALUES clause
