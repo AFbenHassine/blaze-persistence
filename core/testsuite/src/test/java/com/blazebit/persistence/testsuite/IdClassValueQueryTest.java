@@ -78,12 +78,12 @@ public class IdClassValueQueryTest extends AbstractCoreTest {
 
 
     @Test
-    public void testValueQuery() {
-        IdClassEntity e1 = new IdClassEntity(1,"1",  1);
-        IdClassEntity e2 = new IdClassEntity(2,"2",  2);
-        IdClassEntity e3 = new IdClassEntity(3,"3",  3);
-        IdClassEntity e4 = new IdClassEntity(4,"4",  4);
-        IdClassEntity e5 = new IdClassEntity(5,"5",  5);
+    public void testValueQueryKey1() {
+        IdClassEntity e1 = new IdClassEntity(1, "1", 1);
+        IdClassEntity e2 = new IdClassEntity(2, "2", 2);
+        IdClassEntity e3 = new IdClassEntity(3, "3", 3);
+        IdClassEntity e4 = new IdClassEntity(4, "4", 4);
+        IdClassEntity e5 = new IdClassEntity(5, "5", 5);
 
         List entities = new ArrayList();
         entities.add(e1);
@@ -93,42 +93,67 @@ public class IdClassValueQueryTest extends AbstractCoreTest {
         entities.add(e5);
 
         int i = 0;
+        CriteriaBuilder<Integer> cb = (CriteriaBuilder<Integer>) cbf.create(em, IdClassEntity.class)
+                .fromIdentifiableValues(IdClassEntity.class, "myValue", entities)
+                .select("myValue.key1");
+        TypedQuery<Integer> typedQuery = cb.getQuery();
+        List<Integer> idClassEntities = typedQuery.getResultList();
+        for (Integer a : idClassEntities) {
+            i = i + a;
+        }
+
+        Assert.assertTrue(i==15);
+
+    }
+    @Test
+    public void testValueQueryKey2() {
+        IdClassEntity e1 = new IdClassEntity(1, "1", 1);
+        IdClassEntity e2 = new IdClassEntity(2, "2", 2);
+        IdClassEntity e3 = new IdClassEntity(3, "3", 3);
+        IdClassEntity e4 = new IdClassEntity(4, "4", 4);
+        IdClassEntity e5 = new IdClassEntity(5, "5", 5);
+
+        List entities = new ArrayList();
+        entities.add(e1);
+        entities.add(e2);
+        entities.add(e3);
+        entities.add(e4);
+        entities.add(e5);
+
         String string = "";
-//        CriteriaBuilder<IdClassEntityId> cb = (CriteriaBuilder<IdClassEntityId>) cbf.create(em, IdClassEntity.class)
-//                .fromIdentifiableValues(IdClassEntity.class,"myValue",entities)
-//                .select("myValue.key1");
-//        TypedQuery<IdClassEntityId> typedQuery = cb.getQuery();
-//        List<IdClassEntityId> idClassEntities = typedQuery.getResultList();
-//        for (IdClassEntityId a : idClassEntities) {
-//            i = i+a.getKey1();
-//        }
-//
-//        for (IdClassEntityId b : idClassEntities) {
-//            string = string + b.getKey2();
-//        }
+        CriteriaBuilder<String> cb = (CriteriaBuilder<String>) cbf.create(em, IdClassEntity.class)
+                .fromIdentifiableValues(IdClassEntity.class, "myValue", entities)
+                .select("myValue.key2");
+        TypedQuery<String> typedQuery = cb.getQuery();
+        List<String> idClassEntities = typedQuery.getResultList();
 
+        for (String b : idClassEntities) {
+            string = string + b;
+        }
 
+        Assert.assertTrue(string.equals("12345"));
+    }
 
 
         /**
          * Code below works for the single Id case.
          */
 //        int i = 0;
-        CriteriaBuilder<Integer> cb = (CriteriaBuilder<Integer>) cbf.create(em, IdClassEntity.class)
-                .fromIdentifiableValues(IdClassEntity.class,"myValue",entities)
-                .select("myValue.key1");
-        TypedQuery<Integer> typedQuery = cb.getQuery();
-        List<Integer> idClassEntities = typedQuery.getResultList();
-
-        for (Integer a : idClassEntities) {
-            i = i+a;
-        }
-
-        for (Integer b : idClassEntities) {
-            string = string + b;
-        }
-
-        Assert.assertTrue(i==15);
-
-    }
+//        CriteriaBuilder<Integer> cb = (CriteriaBuilder<Integer>) cbf.create(em, IdClassEntity.class)
+//                .fromIdentifiableValues(IdClassEntity.class,"myValue",entities)
+//                .select("myValue.key1");
+//        TypedQuery<Integer> typedQuery = cb.getQuery();
+//        List<Integer> idClassEntities = typedQuery.getResultList();
+//
+//        for (Integer a : idClassEntities) {
+//            i = i+a;
+//        }
+//
+//        for (Integer b : idClassEntities) {
+//            string = string + b;
+//        }
+//
+//        Assert.assertTrue(i==15);
+//
+//    }
 }

@@ -48,9 +48,7 @@ public class IdClassEntity implements Serializable {
     public IdClassEntity() {
     }
 
-    public IdClassEntity(Integer key1,
-                         String key2,
-                         Integer value) {
+    public IdClassEntity(Integer key1, String key2, Integer value) {
         this.key1 = key1;
         this.key2 = key2;
         this.value = value;
