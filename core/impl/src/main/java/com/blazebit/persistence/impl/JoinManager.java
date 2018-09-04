@@ -319,18 +319,20 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         // TODO: we should pad the value count to avoid filling query caches
         ManagedType<?> managedType = mainQuery.metamodel.getManagedType(clazz);
         List<String> idAttributeNames = new ArrayList<String>();
-        Set<Attribute<?, ?>> attributeSet;
+        Set<Attribute<?, ?>> attributeSet = new HashSet<Attribute<?,?>>();
+        Set<JoinNode> rootNodes = new HashSet<>();
 
         if (identifiableReference) {
+            // The line below used to make use of the getSingleIdAttribute method.
             Set<SingularAttribute<?, ?>> idAttributes = JpaMetamodelUtils.getIdAttributes((EntityType<?>) managedType);
 
             for (SingularAttribute singularAttribute : idAttributes) {
                 idAttributeNames.add(singularAttribute.getName());
+                attributeSet.add(singularAttribute);
             }
 
-            Set<String> h = new HashSet<>(sdfasd);
-
-            attributeSet = (Set<Attribute<?, ?>>) (Set<?>) Collections.singleton(idAttribute);
+            Collections.sort(idAttributeNames);
+//            attributeSet = (Set<Attribute<?, ?>>) (Set<?>) Collections.singleton(idAttribute);
         } else {
             Set<Attribute<?, ?>> originalAttributeSet = (Set<Attribute<?, ?>>) (Set) managedType.getAttributes();
             attributeSet = new TreeSet<>(JpaMetamodelUtils.ATTRIBUTE_NAME_COMPARATOR);
@@ -349,14 +351,20 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         parameterManager.registerValuesParameter(rootAlias, valueClazz, parameterNames, pathExpressions, queryBuilder);
 
         JoinAliasInfo rootAliasInfo = new JoinAliasInfo(rootAlias, rootAlias, true, true, aliasManager);
-        Collection<JoinNode> rootNodes = new ArrayList<JoinNode>();
 
-                JoinNode.createValuesRootNode(managedType, typeName, valueCount, idAttributeName, castedParameter, attributes, rootAliasInfo);
-        rootAliasInfo.setJoinNode(rootNode);
-        rootNodes.add(rootNode);
+        for (String idAttributeName : idAttributeNames){
+            JoinNode rootNode = JoinNode.createValuesRootNode(managedType, typeName, valueCount, idAttributeName, castedParameter, attributes, rootAliasInfo);
+            rootNodes.add(rootNode);
+
+        }
+
+        for (JoinNode rootNode : rootNodes) {
+            rootAliasInfo.setJoinNode(rootNode);
+            rootNodes.add(rootNode);
+            entityFunctionNodes.add(rootNode);
+        }
         // register root alias in aliasManager
         aliasManager.registerAliasInfo(rootAliasInfo);
-        entityFunctionNodes.add(rootNode);
         return rootAlias;
     }
 
