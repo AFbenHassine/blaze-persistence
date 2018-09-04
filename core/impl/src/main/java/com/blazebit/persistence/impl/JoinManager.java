@@ -61,6 +61,7 @@ import com.blazebit.persistence.parser.util.JpaMetamodelUtils;
 import com.blazebit.persistence.spi.DbmsModificationState;
 import com.blazebit.persistence.spi.ExtendedManagedType;
 import com.blazebit.persistence.spi.JpaProvider;
+import org.w3c.dom.Attr;
 
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EmbeddableType;
@@ -71,7 +72,17 @@ import javax.persistence.metamodel.ManagedType;
 import javax.persistence.metamodel.MapAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -318,21 +329,17 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         }
         // TODO: we should pad the value count to avoid filling query caches
         ManagedType<?> managedType = mainQuery.metamodel.getManagedType(clazz);
-        List<String> idAttributeNames = new ArrayList<String>();
-        Set<Attribute<?, ?>> attributeSet = new HashSet<Attribute<?,?>>();
-        Set<JoinNode> rootNodes = new HashSet<>();
+        Set<String> idAttributeNames = null;
+        Set<Attribute<?, ?>> attributeSet;
 
         if (identifiableReference) {
-            // The line below used to make use of the getSingleIdAttribute method.
             Set<SingularAttribute<?, ?>> idAttributes = JpaMetamodelUtils.getIdAttributes((EntityType<?>) managedType);
-
-            for (SingularAttribute singularAttribute : idAttributes) {
-                idAttributeNames.add(singularAttribute.getName());
-                attributeSet.add(singularAttribute);
+            attributeSet = new LinkedHashSet<>();
+            idAttributeNames = new LinkedHashSet<>();
+            for (SingularAttribute<?, ?> attribute : idAttributes) {
+                attributeSet.add(attribute);
+                idAttributeNames.add(attribute.getName());
             }
-
-            Collections.sort(idAttributeNames);
-//            attributeSet = (Set<Attribute<?, ?>>) (Set<?>) Collections.singleton(idAttribute);
         } else {
             Set<Attribute<?, ?>> originalAttributeSet = (Set<Attribute<?, ?>>) (Set) managedType.getAttributes();
             attributeSet = new TreeSet<>(JpaMetamodelUtils.ATTRIBUTE_NAME_COMPARATOR);
@@ -351,20 +358,12 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         parameterManager.registerValuesParameter(rootAlias, valueClazz, parameterNames, pathExpressions, queryBuilder);
 
         JoinAliasInfo rootAliasInfo = new JoinAliasInfo(rootAlias, rootAlias, true, true, aliasManager);
-
-        for (String idAttributeName : idAttributeNames){
-            JoinNode rootNode = JoinNode.createValuesRootNode(managedType, typeName, valueCount, idAttributeName, castedParameter, attributes, rootAliasInfo);
-            rootNodes.add(rootNode);
-
-        }
-
-        for (JoinNode rootNode : rootNodes) {
-            rootAliasInfo.setJoinNode(rootNode);
-            rootNodes.add(rootNode);
-            entityFunctionNodes.add(rootNode);
-        }
+        JoinNode rootNode = JoinNode.createValuesRootNode(managedType, typeName, valueCount, idAttributeNames, castedParameter, attributes, rootAliasInfo);
+        rootAliasInfo.setJoinNode(rootNode);
+        rootNodes.add(rootNode);
         // register root alias in aliasManager
         aliasManager.registerAliasInfo(rootAliasInfo);
+        entityFunctionNodes.add(rootNode);
         return rootAlias;
     }
 
@@ -391,12 +390,15 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
                 parameterNames[j][0] = prefix + '_' + attributeName + '_' + j;
             }
         } else if (identifiableReference) {
-            Attribute<?, ?> attribute = attributeSet.iterator().next();
-            String attributeName = attribute.getName();
-            attributes[0] = attributeName;
-            pathExpressions[0] = com.blazebit.reflection.ExpressionUtils.getExpression(clazz, attributeName);
-            for (int j = 0; j < valueCount; j++) {
-                parameterNames[j][0] = prefix + '_' + attributeName + '_' + j;
+            int i = 0;
+            for (Attribute<?, ?> attribute : attributeSet) {
+                String attributeName = attribute.getName();
+                attributes[i] = attributeName;
+                pathExpressions[i] = com.blazebit.reflection.ExpressionUtils.getExpression(clazz, attributeName);
+                for (int j = 0; j < valueCount; j++) {
+                    parameterNames[j][i] = prefix + '_' + attributeName + '_' + j;
+                }
+                i++;
             }
         } else {
             Iterator<Attribute<?, ?>> iter = attributeSet.iterator();
@@ -697,8 +699,12 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
                 } else {
                     if (type instanceof EntityType<?>) {
                         sb.append(((EntityType) type).getName());
-                        if (rootNode.getValuesIdName() != null) {
-                            sb.append('.').append(rootNode.getValuesIdName());
+
+
+                        Set<String> valuesIdNames = rootNode.getValuesIdNames();
+                        if (valuesIdNames != null && ! valuesIdNames.isEmpty()) {
+                            String next = valuesIdNames.iterator().next();
+                            sb.append(".").append(next);
                         }
                     } else {
                         sb.append(rootNode.getValuesTypeName());
@@ -857,9 +863,22 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
             String[] attributes = rootNode.getValuesAttributes();
             String prefix = rootNode.getAlias();
 
+
+            // values ( 1,2,3)
+            // params ? , ? , ? = 1,2,3
+            // value.key = 1 OR value.key = 2 OR value.key = 3
+            // ( value.key = 1 and value.keyB = 1)  OR  ( value.key  AND ... ) = 2 OR ( value.key = 3 AND ... )
+            // value.key = 1 OR value.keyB = 1 OR value.key  OR ...
+
             for (int i = 0; i < valueCount; i++) {
+                if (attributes.length > 1) {
+                    sb.append("( ");
+                }
+
                 for (int j = 0; j < attributes.length; j++) {
+
                     if (typeName != null) {
+                        // TREAT_typeName(alias.attributes[j])
                         sb.append("TREAT_");
                         sb.append(typeName);
                         sb.append('(');
@@ -868,11 +887,13 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
                         sb.append(attributes[j]);
                         sb.append(')');
                     } else {
+                        //alias.attributes[j]
                         sb.append(alias);
                         sb.append('.');
                         sb.append(attributes[j]);
                     }
 
+                    // alias.attributes[j] = :prefix_attributes[j]_i
                     sb.append(" = ");
 
                     sb.append(':');
@@ -880,11 +901,21 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
                     sb.append('_');
                     sb.append(attributes[j]);
                     sb.append('_').append(i);
+
+                    if (j+1 < attributes.length) {
+                        sb.append(" AND ");
+                    }
+
+                }
+
+                if (attributes.length > 1) {
+                    sb.append(" )");
+                }
+
+                if ( i+1 < valueCount) {
                     sb.append(" OR ");
                 }
             }
-
-            sb.setLength(sb.length() - " OR ".length());
         }
     }
 
