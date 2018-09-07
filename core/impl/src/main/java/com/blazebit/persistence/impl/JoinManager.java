@@ -389,17 +389,6 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
             for (int j = 0; j < valueCount; j++) {
                 parameterNames[j][0] = prefix + '_' + attributeName + '_' + j;
             }
-        } else if (identifiableReference) {
-            int i = 0;
-            for (Attribute<?, ?> attribute : attributeSet) {
-                String attributeName = attribute.getName();
-                attributes[i] = attributeName;
-                pathExpressions[i] = com.blazebit.reflection.ExpressionUtils.getExpression(clazz, attributeName);
-                for (int j = 0; j < valueCount; j++) {
-                    parameterNames[j][i] = prefix + '_' + attributeName + '_' + j;
-                }
-                i++;
-            }
         } else {
             Iterator<Attribute<?, ?>> iter = attributeSet.iterator();
             for (int i = 0; i < attributeSet.size(); i++) {
@@ -863,13 +852,6 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
             String[] attributes = rootNode.getValuesAttributes();
             String prefix = rootNode.getAlias();
 
-
-            // values ( 1,2,3)
-            // params ? , ? , ? = 1,2,3
-            // value.key = 1 OR value.key = 2 OR value.key = 3
-            // ( value.key = 1 and value.keyB = 1)  OR  ( value.key  AND ... ) = 2 OR ( value.key = 3 AND ... )
-            // value.key = 1 OR value.keyB = 1 OR value.key  OR ...
-
             for (int i = 0; i < valueCount; i++) {
                 if (attributes.length > 1) {
                     sb.append("( ");
@@ -902,11 +884,11 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
                     sb.append(attributes[j]);
                     sb.append('_').append(i);
 
-                    if (j+1 < attributes.length) {
-                        sb.append(" AND ");
-                    }
+                    sb.append(" AND ");
 
                 }
+
+                sb.setLength(sb.length() - " AND ".length());
 
                 if (attributes.length > 1) {
                     sb.append(" )");
@@ -916,6 +898,8 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
                     sb.append(" OR ");
                 }
             }
+
+            sb.setLength(sb.length() - " OR ".length());
         }
     }
 
