@@ -49,12 +49,12 @@ public class IdClassReturningTest extends AbstractCoreTest {
             @Override
             public void work(EntityManager em) {
                 IdClassEntity e1 = new IdClassEntity(1,"a",  1);
-//                IdClassEntity e2 = new IdClassEntity(2,"b",  2);
-//                IdClassEntity e3 = new IdClassEntity(3,"c",  3);
+                IdClassEntity e2 = new IdClassEntity(2,"b",  2);
+                IdClassEntity e3 = new IdClassEntity(3,"b",  3);
 
                 em.persist(e1);
-//                em.persist(e2);
-//                em.persist(e3);
+                em.persist(e2);
+                em.persist(e3);
 
             }
         });
@@ -64,42 +64,54 @@ public class IdClassReturningTest extends AbstractCoreTest {
 
     @Test
     public void testReturning() {
-        IdClassEntity e4 = new IdClassEntity(4, "4", 4);
-        IdClassEntity e5 = new IdClassEntity(5, "5", 5);
+//        IdClassEntity e2 = new IdClassEntity(2, "2", 4);
+//        IdClassEntity e3 = new IdClassEntity(3, "3", 4);
+//        IdClassEntity e4 = new IdClassEntity(4, "4", 4);
+//        IdClassEntity e5 = new IdClassEntity(5, "5", 5);
+//
+//        List<IdClassEntity> entities = new ArrayList<>();
+//        entities.add(e2);
+//        entities.add(e3);
+//        entities.add(e4);
+//        entities.add(e5);
+//
+//        InsertCriteriaBuilder<IdClassEntity> cb = cbf.insert(em, IdClassEntity.class)
+//                .fromIdentifiableValues(IdClassEntity.class, "entity", entities)
+//                .bind("key1").select("entity.key1").where("entity.key1").isNotNull()
+//                .bind("key2").select("entity.key2").where("entity.key2").isNotNull()
+//                .bind("value").select("entity.value").where("entity.value").isNotNull();
+//
+//        ReturningResult<IdClassEntity> result = cb2.executeWithReturning(new ReturningObjectBuilder<IdClassEntity>() {
+//            @Override
+//            public void applyReturning(SimpleReturningBuilder returningBuilder) {
+//                returningBuilder.returning("key1");
+//
+//            }
+//
+//            @Override
+//            public IdClassEntity build(Object[] tuple) {
+//                return new IdClassEntity();
+//            }
+//
+//            @Override
+//            public List<IdClassEntity> buildList(List<IdClassEntity> list) {
+//                return list;
+//            }
+//        });
+//
+//        List<IdClassEntity> createdIdClassEntities = result.getResultList();
 
-        List<IdClassEntity> entities = new ArrayList<>();
-        entities.add(e4);
-        entities.add(e5);
-
-        InsertCriteriaBuilder<IdClassEntity> cb = cbf.insert(em, IdClassEntity.class)
-                .fromIdentifiableValues(IdClassEntity.class, "entity", entities)
-                .bind("key1").select("entity.key1").where("entity.key1").like().value(4).noEscape()
-                .bind("key2").select("entity.key2").where("entity.key2").isNotNull()
-                .bind("value").select("entity.value").where("entity.value").isNotNull();
-
-        ReturningResult<IdClassEntity> result = cb.executeWithReturning(new ReturningObjectBuilder<IdClassEntity>() {
-            @Override
-            public void applyReturning(SimpleReturningBuilder returningBuilder) {
-                returningBuilder.returning("key1");
-
-            }
-
-            @Override
-            public IdClassEntity build(Object[] tuple) {
-                return new IdClassEntity();
-            }
-
-            @Override
-            public List<IdClassEntity> buildList(List<IdClassEntity> list) {
-                return list;
-            }
-        });
-
-        List<IdClassEntity> createdIdClassEntities = result.getResultList();
+        DeleteCriteriaBuilder<IdClassEntity> cb2 = cbf.delete(em, IdClassEntity.class,"entity")
+                //Why can I not use .eqExpression instead of .like().value("b").noEscape?
+                .where("entity.key2").like().value("b").noEscape();
+        ReturningResult<String> result = cb2.executeWithReturning("key2",String.class);
+        List<String> names = result.getResultList();
 
 
 
-        Assert.assertTrue(createdIdClassEntities.size()==1);
+
+        Assert.assertTrue(names.size()==2);
+        Assert.assertTrue(names.contains("b"));
 
     }
 

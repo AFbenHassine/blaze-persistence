@@ -48,17 +48,7 @@ public class IdClassBuildClauseTest extends AbstractCoreTest {
         transactional(new TxVoidWork() {
             @Override
             public void work(EntityManager em) {
-                IdClassEntity e1 = new IdClassEntity(1, "1", 1);
-//                IdClassEntity e2 = new IdClassEntity(2, "2", 2);
-//                IdClassEntity e3 = new IdClassEntity(3, "3", 3);
-//                IdClassEntity e4 = new IdClassEntity(4, "4", 4);
-//                IdClassEntity e5 = new IdClassEntity(5, "5", 5);
 
-                em.persist(e1);
-//                em.persist(e2);
-//                em.persist(e3);
-//                em.persist(e4);
-//                em.persist(e5);
             }
         });
     }
@@ -89,6 +79,7 @@ public class IdClassBuildClauseTest extends AbstractCoreTest {
                     .select("count(*)")
                 .end()
                 .select("entity1.key1");
+
         long numberOfEntities = Long.valueOf(0);
         for(Tuple tuple : cb.getQuery().getResultList()){
             numberOfEntities = numberOfEntities + (Long) tuple.get(0);
