@@ -23,6 +23,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import javax.persistence.EntityManager;
+import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,27 +66,33 @@ public class IdClassBuildClauseTest extends AbstractCoreTest {
 
     @Test
     public void testBuildClause() {
-        String expectedFromIdentifiableValuesQuery = "SELECT myValue.key1 FROM IdClassEntity myValue";
+        String expectedFromIdentifiableValuesQuery = "SELECT entity1.key1 FROM(2 VALUES) ( " +
+                "SELECT entity2.count(*) FROM entity2 IdClassEntity myValue";
         IdClassEntity e1 = new IdClassEntity(1, "1", 1);
-//        IdClassEntity e2 = new IdClassEntity(2, "2", 2);
-//        IdClassEntity e3 = new IdClassEntity(3, "3", 3);
-//        IdClassEntity e4 = new IdClassEntity(4, "4", 4);
-//        IdClassEntity e5 = new IdClassEntity(5, "5", 5);
+        IdClassEntity e2 = new IdClassEntity(2, "2", 2);
+        IdClassEntity e3 = new IdClassEntity(3, "3", 3);
+        IdClassEntity e4 = new IdClassEntity(4, "4", 4);
+        IdClassEntity e5 = new IdClassEntity(5, "5", 5);
 
-        List entities = new ArrayList();
+        List<IdClassEntity> entities = new ArrayList<>();
+        List<IdClassEntity> entities2 = new ArrayList<>();
         entities.add(e1);
-//        entities.add(e2);
-//        entities.add(e3);
-//        entities.add(e4);
-//        entities.add(e5);
+        entities.add(e2);
+        entities2.add(e3);
+        entities2.add(e4);
+        entities2.add(e5);
 
-        int i = 0;
-        CriteriaBuilder<Integer> cb = (CriteriaBuilder<Integer>) cbf.create(em, IdClassEntity.class)
-                .fromIdentifiableValues(IdClassEntity.class, "myValue", entities)
-                .select("myValue.key1");
-        System.out.println(cb.getQueryString());
-        Assert.assertEquals(expectedFromIdentifiableValuesQuery, cb.getQueryString());
-
+        CriteriaBuilder<Tuple> cb = cbf.create(em, Tuple.class)
+                .fromIdentifiableValues(IdClassEntity.class, "entity1", entities)
+                    .selectSubquery()
+                    .fromIdentifiableValues(IdClassEntity.class, "entity2", entities)
+                    .select("count(*)")
+                .end()
+                .select("entity1.key1");
+        long numberOfEntities = Long.valueOf(0);
+        for(Tuple tuple : cb.getQuery().getResultList()){
+            numberOfEntities = numberOfEntities + (Long) tuple.get(0);
+        }
+        Assert.assertTrue(numberOfEntities==4);
     }
-
 }
