@@ -54,6 +54,12 @@ public class IdClassEntity implements Serializable {
         this.value = value;
     }
 
+    public IdClassEntity(IdClassEntityId id, Integer value) {
+        this.key1 = id.getKey1();
+        this.key2 = id.getKey2();
+        this.value = value;
+    }
+
     @Id
     @Column(name = "key1", nullable = false)
     public Integer getKey1() {

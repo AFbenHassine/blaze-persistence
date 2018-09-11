@@ -93,11 +93,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.SingularAttribute;
 import java.lang.reflect.Constructor;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -244,9 +240,16 @@ public class EntityViewManagerImpl implements EntityViewManager {
     public <T> T find(EntityManager entityManager, EntityViewSetting<T, CriteriaBuilder<T>> entityViewSetting, Object entityId) {
         ViewTypeImpl<T> managedViewType = metamodel.view(entityViewSetting.getEntityViewClass());
         EntityType<?> entityType = (EntityType<?>) managedViewType.getJpaManagedType();
-        SingularAttribute<?, ?> idAttribute = JpaMetamodelUtils.getSingleIdAttribute(entityType);
-        CriteriaBuilder<?> cb = cbf.create(entityManager, managedViewType.getEntityClass())
-                .where(idAttribute.getName()).eq(entityId);
+        Set<SingularAttribute<?, ?>> idAttributeSet = JpaMetamodelUtils.getIdAttributes(entityType);
+        CriteriaBuilder<?> cb = cbf.create(entityManager, managedViewType.getEntityClass());
+        // Should make it throw an error if the idAttributeSet and entityId do not match in size.
+        // The entityId is usually some specifically defined class which is definitely not an instance of Collection.
+        if (entityId.getClass().getDeclaredFields()){
+            for (SingularAttribute<?,?> idAttribute:idAttributeSet){
+                cb.where(idAttribute.getName()).in(entityId);
+            }} else {
+            cb.where(idAttributeSet.iterator().next().getName()).eq(entityId);
+        }
         List<T> resultList = applySetting(entityViewSetting, cb).getResultList();
         return resultList.isEmpty() ? null : resultList.get(0);
     }
