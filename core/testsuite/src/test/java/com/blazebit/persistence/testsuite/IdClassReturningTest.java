@@ -17,16 +17,24 @@
 package com.blazebit.persistence.testsuite;
 
 import com.blazebit.persistence.*;
+import com.blazebit.persistence.testsuite.base.jpa.category.NoDatanucleus;
+import com.blazebit.persistence.testsuite.base.jpa.category.NoEclipselink;
+import com.blazebit.persistence.testsuite.base.jpa.category.NoOpenJPA;
+import com.blazebit.persistence.testsuite.base.jpa.category.NoOracle;
 import com.blazebit.persistence.testsuite.entity.IdClassEntity;
+import com.blazebit.persistence.testsuite.entity.IntIdEntity;
 import com.blazebit.persistence.testsuite.tx.TxVoidWork;
+import com.blazebit.persistence.testsuite.tx.TxWork;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
-import javax.persistence.EntityManager;
-import javax.persistence.Tuple;
-import javax.persistence.TypedQuery;
+import javax.persistence.*;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  *
@@ -35,10 +43,75 @@ import java.util.List;
  */
 public class IdClassReturningTest extends AbstractCoreTest {
 
+    @Entity
+    @Table(name = "pseudo_id_class_entity")
+    class PseudoIdClassEntity implements Serializable {
+        private static final long serialVersionUID = 2L;
+
+
+        private Integer pseudoKey1;
+        private String pseudoKey2;
+        private Integer pseudoValue;
+        private Set<PseudoIdClassEntity> children = new HashSet<>();
+
+        public PseudoIdClassEntity() {
+        }
+
+        public PseudoIdClassEntity(Integer key1, String key2, Integer value) {
+            this.pseudoKey1 = key1;
+            this.pseudoKey2 = key2;
+            this.pseudoValue = value;
+        }
+
+        @Id
+        @Column(name = "pseudoKey1", nullable = false)
+        public Integer getPseudoKey1() {
+            return pseudoKey1;
+        }
+
+        public void setPseudoKey1(Integer pseudoKey1) {
+            this.pseudoKey1 = pseudoKey1;
+        }
+
+        @Column(name = "pseudoKey2", nullable = false)
+        public String getPseudoKey2() {
+            return pseudoKey2;
+        }
+
+        public void setPseudoKey2(String pseudoKey2) {
+            this.pseudoKey2 = pseudoKey2;
+        }
+
+        @Basic(optional = false)
+        @Column(name = "pseudoValue", nullable = false)
+        public Integer getPseudoValue() {
+            return pseudoValue;
+        }
+
+        public void setPseudoValue(Integer pseudoValue) {
+            this.pseudoValue = pseudoValue;
+        }
+
+        @ManyToMany
+        @JoinTable(name = "pseudo_id_class_entity_children", joinColumns = {
+                @JoinColumn(name = "child_pseudo_key1", nullable = false, referencedColumnName = "pseudoKey1"),
+        }, inverseJoinColumns = {
+                @JoinColumn(name = "parent_pseudo_key1", nullable = false, referencedColumnName = "pseudoKey1"),
+        })
+        public Set<PseudoIdClassEntity> getChildren() {
+            return children;
+        }
+
+        public void setChildren(Set<PseudoIdClassEntity> children) {
+            this.children = children;
+        }
+    }
+
     @Override
     protected Class<?>[] getEntityClasses() {
         return new Class<?>[]{
-                IdClassEntity.class
+                IdClassEntity.class,
+                IdClassReturningTest.PseudoIdClassEntity.class
         };
     }
 
@@ -48,93 +121,36 @@ public class IdClassReturningTest extends AbstractCoreTest {
         transactional(new TxVoidWork() {
             @Override
             public void work(EntityManager em) {
-                IdClassEntity e1 = new IdClassEntity(1,"a",  1);
-                IdClassEntity e2 = new IdClassEntity(2,"b",  2);
-                IdClassEntity e3 = new IdClassEntity(3,"b",  3);
+                PseudoIdClassEntity pe1 = new PseudoIdClassEntity(4,"c",4);
+                em.persist(pe1);
+                em.flush();
 
-                em.persist(e1);
-                em.persist(e2);
-                em.persist(e3);
-
+                PseudoIdClassEntity pe2 = new PseudoIdClassEntity(5,"d",5);
+                em.persist(pe2);
             }
         });
     }
 
-
-
     @Test
-    public void testReturning() {
-//        IdClassEntity e2 = new IdClassEntity(2, "2", 4);
-//        IdClassEntity e3 = new IdClassEntity(3, "3", 4);
-//        IdClassEntity e4 = new IdClassEntity(4, "4", 4);
-//        IdClassEntity e5 = new IdClassEntity(5, "5", 5);
-//
-//        List<IdClassEntity> entities = new ArrayList<>();
-//        entities.add(e2);
-//        entities.add(e3);
-//        entities.add(e4);
-//        entities.add(e5);
-//
-//        InsertCriteriaBuilder<IdClassEntity> cb = cbf.insert(em, IdClassEntity.class)
-//                .fromIdentifiableValues(IdClassEntity.class, "entity", entities)
-//                .bind("key1").select("entity.key1").where("entity.key1").isNotNull()
-//                .bind("key2").select("entity.key2").where("entity.key2").isNotNull()
-//                .bind("value").select("entity.value").where("entity.value").isNotNull();
-//
-//        ReturningResult<IdClassEntity> result = cb2.executeWithReturning(new ReturningObjectBuilder<IdClassEntity>() {
-//            @Override
-//            public void applyReturning(SimpleReturningBuilder returningBuilder) {
-//                returningBuilder.returning("key1");
-//
-//            }
-//
-//            @Override
-//            public IdClassEntity build(Object[] tuple) {
-//                return new IdClassEntity();
-//            }
-//
-//            @Override
-//            public List<IdClassEntity> buildList(List<IdClassEntity> list) {
-//                return list;
-//            }
-//        });
-//
-//        List<IdClassEntity> createdIdClassEntities = result.getResultList();
+    @Category({ NoOracle.class, NoDatanucleus.class, NoEclipselink.class, NoOpenJPA.class })
+    public void testReturningWithInsert() {
+        ReturningResult<Integer> result = transactional(new TxWork<ReturningResult<Integer>>() {
+            @Override
+            public ReturningResult<Integer> work(EntityManager em) {
+                final InsertCriteriaBuilder<IdClassEntity> cb3 = cbf.insert(em,IdClassEntity.class);
+                cb3.from(PseudoIdClassEntity.class,"pe");
+                cb3.bind("key1").select("pe.pseudoKey1");
+                cb3.bind("key2").select("pe.pseudoKey2");
+                cb3.bind("value").select("pe.pseudoValue");
+                cb3.orderByAsc("pe.pseudoKey1");
 
-        DeleteCriteriaBuilder<IdClassEntity> cb2 = cbf.delete(em, IdClassEntity.class,"entity")
-                //Why can I not use .eqExpression instead of .like().value("b").noEscape?
-                .where("entity.key2").like().value("b").noEscape();
-        ReturningResult<String> result = cb2.executeWithReturning("key2",String.class);
-        List<String> names = result.getResultList();
+                System.out.println(cb3.getQueryString());
 
-
-
-
-        Assert.assertTrue(names.size()==2);
-        Assert.assertTrue(names.contains("b"));
-
+                return cb3.executeWithReturning("key1", Integer.class);
+            }
+        });
+//        Assert.assertEquals(5,result.getLastResult().intValue());
+        Assert.assertEquals(2,result.getUpdateCount());
     }
-
-
-        /**
-         * Code below works for the single Id case.
-         */
-//        int i = 0;
-//        CriteriaBuilder<Integer> cb = (CriteriaBuilder<Integer>) cbf.create(em, IdClassEntity.class)
-//                .fromIdentifiableValues(IdClassEntity.class,"myValue",entities)
-//                .select("myValue.key1");
-//        TypedQuery<Integer> typedQuery = cb.getQuery();
-//        List<Integer> idClassEntities = typedQuery.getResultList();
-//
-//        for (Integer a : idClassEntities) {
-//            i = i+a;
-//        }
-//
-//        for (Integer b : idClassEntities) {
-//            string = string + b;
-//        }
-//
-//        Assert.assertTrue(i==15);
-//
-//    }
 }
+
